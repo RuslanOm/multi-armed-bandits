@@ -67,4 +67,3 @@ class ContextBandit:
 
         data = pd.DataFrame(data=data)
         data.to_csv(file_name, index=False)
-
