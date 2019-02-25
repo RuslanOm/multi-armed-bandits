@@ -1,4 +1,4 @@
-from linUCB_hubrid import HybridBandit
+from linUCB_hybrid import HybridBandit
 import numpy as np
 import os
 import time
@@ -50,7 +50,7 @@ def evaluate(alpha):
     g_test = 0
     t_test = 0
 
-    path = "/home/ruslan/PycharmProjects/group_recommender/group_recommender/bandittts_zip/bandittts"
+    path = ""
     ls = os.listdir(path)
     ls.sort()
 
@@ -65,12 +65,9 @@ def evaluate(alpha):
         # f - лог-файлы; f_errors - файл для записи событий, когда произошли ошибки; f_history - файл событий, когда
         # произошло совпадение выдачи политики и бандитов; f_shows - файл для записи истории показов бандитов
         f = open(path + "/" + ls[i], "r")
-        f_errors = open(f"/home/ruslan/PycharmProjects/group_recommender/group_recommender/big_start"
-                  f"/invalid_events/errors_in_day_{i + 1}.txt", "a")
-        f_history = open(f"/home/ruslan/PycharmProjects/group_recommender/"
-                  f"group_recommender/big_start/history/history_in_day_{i + 1}.txt", "a")
-        f_shows = open(f"/home/ruslan/PycharmProjects/group_recommender/"
-                  f"group_recommender/big_start/history_bandit/bandit_shows_in_day_{i + 1}.txt", "a")
+        f_errors = open(f"/invalid_events/errors_in_day_{i + 1}.txt", "a")
+        f_history = open(f"/history/history_in_day_{i + 1}.txt", "a")
+        f_shows = open(f"/history_bandit/bandit_shows_in_day_{i + 1}.txt", "a")
 
         while True:
             line = f.readline()
@@ -113,10 +110,8 @@ def evaluate(alpha):
         f_errors.close()
         f.close()
 
-        bandit.get_results_csv(f"/home/ruslan/PycharmProjects/group_recommender/"
-                  f"group_recommender/big_start/results/hybrid_alpha_{alpha}_day_{i + 1}.csv")
-        f = open(f"/home/ruslan/PycharmProjects/group_recommender/"
-                  f"group_recommender/big_start/all_kinds_of_rewards/rewards_day_{i + 1}.txt", "a")
+        bandit.get_results_csv(f"/hybrid_alpha_{alpha}_day_{i + 1}.csv")
+        f = open(f"/all_kinds_of_rewards/rewards_day_{i + 1}.txt", "a")
         if i == 0:
             f.write(f"total reward " + str(g_learning / t_learning) + " " + str(g_learning) + " " + str(t_learning))
             learning = False
@@ -132,7 +127,6 @@ def evaluate(alpha):
 if __name__ == "__main__":
     start = time.ctime(time.time())
     alpha = 2.1
-    # print(os.listdir("/home/ruslan/PycharmProjects/group_recommender/group_recommender/big_start"))
     evaluate(alpha)
 
     end = time.ctime(time.time())
