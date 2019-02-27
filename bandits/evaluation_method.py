@@ -130,7 +130,7 @@ def evaluate(bandit, kind=None, learning=False):
 if __name__ == "__main__":
     start = time.ctime(time.time())
     evaluate(UCB1(), "UCB1")
-    evaluate(HybridBandit(2.1, 6, 6, 0.8, -15), "Hybrid")
+    evaluate(HybridBandit(2.1, 6, 6, 0.8, -15), "Hybrid", True)
     evaluate(EGreedy(1, 0.9), "E-Greedy")
 
     end = time.ctime(time.time())
