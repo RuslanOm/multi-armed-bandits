@@ -22,33 +22,29 @@ class DisjointBandit(BaseBandit):
         self.Aa_inv[key] = np.identity(self.size_of_user_context)
         self.ba[key] = np.zeros((self.size_of_user_context, 1))
 
-        self.n_shows_b[key] = 0
-        self.n_shows_r[key] = 0
-
-        self.n_clicks_b[key] = 0
-        self.n_clicks_r[key] = 0
+        self.n_clicks_b.setdefault(key, 0)
+        self.n_clicks_r.setdefault(key, 0)
+        self.n_shows_b.setdefault(key, 0)
+        self.n_shows_r.setdefault(key, 0)
 
     def predict_arm(self, event):
 
         arm, arms, reward, user_context, group_context = event
 
-        self.n_shows_r[arm] += 1
-        self.n_clicks_r[arm] += reward
-
-        # если руку ещё не видели - инициализируем ее
-        if arm not in self.Aa:
-            self.init_arm(arm)
+        for item in arms:
+            if item not in self.arms:
+                self.init_arm(item)
 
         payoffs = {}
 
         for key in arms:
             self.theta_hat[key] = np.dot(self.Aa_inv[key], self.ba[key])
-            payoffs[key] = np.dot(user_context, self.theta_hat[key]) + \
-                           self.alpha * np.sqrt(np.dot(np.dot(user_context, self.Aa_inv[key]),
-                                                       user_context.transpose()))
+            payoffs[key] = np.dot(self.theta_hat[key].transpose(), user_context) + \
+                           self.alpha * np.sqrt(np.dot(np.dot(user_context.transpose(), self.Aa_inv[key]),
+                                                       user_context))
         v = list(payoffs.values())
         k = list(payoffs.keys())
-        return k[v.index(max(v))], max(v)
+        return k[v.index(max(v))]
 
     def update(self, event):
         arm, arms, reward, user_context, group_context = event
@@ -61,12 +57,12 @@ class DisjointBandit(BaseBandit):
             else:
                 r = self.r0
 
-            self.Aa[arm] += np.outer(user_context, user_context)  
+            self.Aa[arm] += np.outer(user_context, user_context)
             self.Aa_inv[arm] = np.linalg.inv(self.Aa[arm])
-            self.ba[arm] += r * user_context.transpose()
+            self.ba[arm] += r * user_context
             self.theta_hat[arm] = self.Aa_inv[arm].dot(self.ba[arm])
 
             self.n_shows_b[arm] += 1
-            self.n_clicks_b[arm] += r
+            self.n_clicks_b[arm] += reward
 
 
