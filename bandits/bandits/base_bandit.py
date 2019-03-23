@@ -3,6 +3,7 @@ import pandas as pd
 
 
 class BaseBandit:
+
     def __init__(self):
         self.arms = set()
         self.n_shows_b = {}
@@ -12,12 +13,15 @@ class BaseBandit:
         self.n_clicks_r = {}
 
         # специальное множество для id-шников плохих групп
-        self.black_list = set()
+        # self.black_list = set()
 
     def predict_arm(self, event):
         pass
 
     def update(self, event):
+        pass
+
+    def init_arm(self, arm):
         pass
 
     def reboot(self):
@@ -41,6 +45,11 @@ class BaseBandit:
             "ctr_policy": [],
             "diff": []
         }
+        print(self.n_clicks_b)
+        print(self.n_clicks_r)
+        print(self.n_shows_b)
+        print(self.n_shows_r)
+        print(self.arms)
         for item in self.arms:
             data["arms"].append(item)
             data["n_clicks_b"].append(self.n_clicks_b[item])

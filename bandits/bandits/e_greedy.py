@@ -8,17 +8,14 @@ from base_bandit import BaseBandit
 
 class EGreedy(BaseBandit):
 
-    def __init__(self, c, d):
+    def __init__(self, epsilon):
         super().__init__()
+        self.epsilon = epsilon
         self.n = 1
         self.k = 0
         self.curr_max = None
         self.rewards = {}
         self.n_plays = {}
-
-        # параметры алгоритма
-        self.c = c
-        self.d = d
 
     def predict_arm(self, event):
         arm, arms, reward, user_context, group_context = event
@@ -28,7 +25,7 @@ class EGreedy(BaseBandit):
                 self.init_arm(item)
 
         # считаем e_n по формуле из статьи
-        e_n = min(1, self.c * self.k / (self.d ** 2 * self.n))
+        e_n = self.epsilon
         r = random.random()
 
         # обновляем текущую максимальную руку
@@ -48,6 +45,11 @@ class EGreedy(BaseBandit):
         self.rewards.setdefault(arm, 0)
         self.n_plays.setdefault(arm, 1)
 
+        self.n_clicks_b.setdefault(arm, 0)
+        self.n_clicks_r.setdefault(arm, 0)
+        self.n_shows_b.setdefault(arm, 0)
+        self.n_shows_r.setdefault(arm, 0)
+
     def get_max_hand(self, arms):
         # список текущих средних наград рук
         ls_tmp = [self.rewards[item] / self.n_plays[item] for item in arms]
@@ -62,4 +64,8 @@ class EGreedy(BaseBandit):
         arm, arms, reward, user_context, group_context = event
         self.rewards[arm] += reward
         self.n_plays[arm] += 1
+        self.n += 1
+
+        self.n_shows_b[arm] += 1
+        self.n_clicks_b[arm] += reward
 
