@@ -1,24 +1,26 @@
-# сам алгоритм взят отсюда
-# https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf
+"""This class is an implementation E-Greedy algorithm from https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf
 
-import math
+"""
+
 import random
-from base_bandit import BaseBandit
+from bandits.bandits.base_bandit import BaseBandit
 
 
 class EGreedy(BaseBandit):
 
-    def __init__(self, epsilon):
+    def __init__(self, epsilon, average_reward=0):
         super().__init__()
         self.epsilon = epsilon
         self.n = 1
         self.k = 0
         self.curr_max = None
-        self.rewards = {}
+        self.rewards_d = {}
         self.n_plays = {}
 
+        self.average_reward = average_reward
+
     def predict_arm(self, event):
-        arm, arms, reward, user_context, group_context = event
+        arm, arms, reward, user_context, groups = event
         # если руку ещё не видели, то инициализируем ее
         for item in arms:
             if item not in self.arms:
@@ -42,7 +44,7 @@ class EGreedy(BaseBandit):
 
     def init_arm(self, arm):
         self.arms.add(arm)
-        self.rewards.setdefault(arm, 0)
+        self.rewards_d.setdefault(arm, 0)
         self.n_plays.setdefault(arm, 1)
 
         self.n_clicks_b.setdefault(arm, 0)
@@ -52,7 +54,7 @@ class EGreedy(BaseBandit):
 
     def get_max_hand(self, arms):
         # список текущих средних наград рук
-        ls_tmp = [self.rewards[item] / self.n_plays[item] for item in arms]
+        ls_tmp = [self.rewards_d[item] / self.n_plays[item] for item in arms]
 
         curr_max = max(ls_tmp)
         ind = ls_tmp.index(curr_max)
@@ -62,10 +64,15 @@ class EGreedy(BaseBandit):
 
     def update(self, event):
         arm, arms, reward, user_context, group_context = event
-        self.rewards[arm] += reward
+        self.rewards_d[arm] += reward
         self.n_plays[arm] += 1
         self.n += 1
 
         self.n_shows_b[arm] += 1
         self.n_clicks_b[arm] += reward
+
+        self.n_steps += 1
+        self.rewards += reward
+
+        self.regret.append(self.n_steps * self.average_reward - self.rewards)
 

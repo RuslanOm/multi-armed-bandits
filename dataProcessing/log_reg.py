@@ -1,12 +1,13 @@
+"""Implementation of bilinear transformation from http://www.gatsby.ucl.ac.uk/~chuwei/paper/isp781-chu.pdf"""
 import numpy as np
-import math
 import random
+import pickle
 import matplotlib.pyplot as plt
 
 
 class LogReg:
     def __init__(self, user_size, group_size, c, step_size):
-        self.W = np.random.normal(0, c ** 3, size=(user_size, group_size))
+        self.W = np.random.normal(0, c, size=(user_size, group_size))
         self.user_size = user_size
         self.group_size = group_size
         self.step_size = step_size
@@ -37,7 +38,7 @@ class LogReg:
     def norma(self, A):
         return np.linalg.norm(A)
 
-    def fit(self, sample):
+    def fit(self, sample, epsilon=1e-5):
         """sample - список кортежей вида (x_i, z_j, r_ij)
         """
         self.sample = sample
@@ -49,7 +50,7 @@ class LogReg:
             self.step(x, z, r)
             tmp = self.norma(prom - self.W)
             self.norm_array.append(tmp)
-            if tmp < 1e-5:
+            if tmp < epsilon:
                 break
             n_steps += 1
 
@@ -61,9 +62,12 @@ class LogReg:
     def predict(self, x, z):
         return self.sigmoid(self.calc_s(x, z))
 
-    def export_model(self):
-        pass
+    def dump(self, file_name):
+        """Saving model like a byte file"""
+        # file_name должно иметь расширение .pickle
 
-    def import_model(self):
-        pass
+        with open(file_name, "wb") as f:
+            pickle.dump(self, f)
+
+
 

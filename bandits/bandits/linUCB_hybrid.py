@@ -1,4 +1,5 @@
-"""This class it is an implementation of Contextual Bandit Algorithm with Hybrid Linear Model
+"""This class is an implementation of Contextual Bandit Algorithm with Hybrid Linear Model
+https://arxiv.org/pdf/1003.0146.pdf
 
 """
 import numpy as np
@@ -56,9 +57,6 @@ class HybridBandit(BaseBandit):
         self.theta_hat = {}
 
         self.average_reward = average_reward
-        self.regret = []
-        self.rewards = 0.0
-        self.n_steps = 0
 
     def init_arm(self, key):
         self.arms.add(key)

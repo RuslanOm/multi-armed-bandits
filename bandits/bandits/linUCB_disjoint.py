@@ -1,20 +1,25 @@
+"""This class is an implementation of Contextual Bandit Algorithm with Disjoint Linear Model from
+https://arxiv.org/pdf/1003.0146.pdf
+
+"""
 import numpy as np
-import pandas as pd
-from base_bandit import BaseBandit
+from bandits.bandits.base_bandit import BaseBandit
 
 
 class DisjointBandit(BaseBandit):
-    def __init__(self,  alpha, size_of_user_contex, r1, r0):
+    def __init__(self,  alpha, size_of_user_context, r1=1, r0=0, average_reward=0):
         super().__init__()
         self.r1 = r1
         self.r0 = r0
-        self.size_of_user_context = size_of_user_contex
+        self.size_of_user_context = size_of_user_context
         self.alpha = alpha
 
         self.Aa = {}
         self.Aa_inv = {}
         self.ba = {}
         self.theta_hat = {}
+
+        self.average_reward = average_reward
 
     def init_arm(self, key):
         self.arms.add(key)
@@ -29,7 +34,7 @@ class DisjointBandit(BaseBandit):
 
     def predict_arm(self, event):
 
-        arm, arms, reward, user_context, group_context = event
+        arm, arms, reward, user_context, groups = event
 
         for item in arms:
             if item not in self.arms:
@@ -47,11 +52,11 @@ class DisjointBandit(BaseBandit):
         return k[v.index(max(v))]
 
     def update(self, event):
-        arm, arms, reward, user_context, group_context = event
+        arm, reward, user_context = event
 
         if reward == -1:
             pass
-        elif reward == 1 or reward == 0:
+        else:
             if reward == 1:
                 r = self.r1
             else:
@@ -64,5 +69,10 @@ class DisjointBandit(BaseBandit):
 
             self.n_shows_b[arm] += 1
             self.n_clicks_b[arm] += reward
+
+            self.n_steps += 1
+            self.rewards += reward
+
+            self.regret.append(self.n_steps * self.average_reward - self.rewards)
 
 

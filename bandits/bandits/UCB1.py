@@ -1,19 +1,24 @@
+"""This class is an implementation UCB1 algorithm from https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf
+
+"""
 import math
-from base_bandit import BaseBandit
+from bandits.bandits.base_bandit import BaseBandit
 
 
 class UCB1(BaseBandit):
 
-    def __init__(self, alpha):
+    def __init__(self, alpha, average_reward=0):
         super().__init__()
         self.alpha = alpha
         self.n_plays = {}
         self.n = 0
         self.cumulative_reward = {}
 
+        self.average_reward = average_reward
+
     def predict_arm(self, event):
         # насчитываем оценки только для рук из actual_arms
-        arm, arms, reward, user_context, group_context = event
+        arm, arms, reward, user_context, groups = event
         for item in arms:
             if item not in self.arms:
                 self.init_arm(item)
@@ -49,3 +54,7 @@ class UCB1(BaseBandit):
         self.n_shows_b[arm] += 1
         self.n_clicks_b[arm] += reward
 
+        self.n_steps += 1
+        self.rewards += reward
+
+        self.regret.append(self.n_steps * self.average_reward - self.rewards)

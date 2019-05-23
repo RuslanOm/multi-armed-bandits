@@ -16,6 +16,11 @@ class BaseBandit:
         self.n_clicks_b = {}
         self.n_clicks_r = {}
 
+        self.average_reward = 0
+        self.regret = []
+        self.rewards = 0.0
+        self.n_steps = 0
+
     def predict_arm(self, event):
         """Method for predicting arm for the step"""
         pass
