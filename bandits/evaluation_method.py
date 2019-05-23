@@ -1,19 +1,23 @@
-from linUCB_hybrid import HybridBandit
-from UCB1 import UCB1
-from e_greedy import EGreedy
-from linUCB_disjoint import DisjointBandit
-from base_bandit import BaseBandit
+"""Implementation of offline-evaluation method from http://proceedings.mlr.press/v26/li12a/li12a.pdf"""
 import numpy as np
 import os
 import time
 import datetime
+import pickle
 import pandas as pd
 import sklearn.decomposition as sd
+
+from bandits.bandits.linUCB_hybrid import HybridBandit
+from bandits.bandits.UCB1 import UCB1
+from bandits.bandits.e_greedy import EGreedy
+from bandits.bandits.linUCB_disjoint import DisjointBandit
+from bandits.bandits.base_bandit import BaseBandit
 from sklearn.utils import shuffle
 
 
 def format_event(line):
     # форматирование событий из лог-файла
+    # данный способо форматирования приведен для вида событий, которые в работе описаны рисунком 3
     line = line.strip().split("|")
     arm = line[0].split()[1]
     reward = int(line[0].split()[2])
@@ -24,153 +28,43 @@ def format_event(line):
     user_context.insert(0, 1.0)
     user_context = np.array([user_context]).transpose()
 
-    # онтекст группы
+    groups = {}
+
+    # контексты групп
     group_cont = line[2:]
-    list_of_groups = [item.split()[0] for item in group_cont]
-    # print(list_of_groups)
-    # print(len(arm))
-    group_ind = list_of_groups.index(arm)
-    group_cont = group_cont[group_ind].split()[1:-1]
-    group_context = [float(item) for _, item in list(map(lambda x: x.split(":"), group_cont))]
-    group_context.insert(0, 1.0)
-    group_context = np.array([group_context])
+    for item in group_cont:
+        prom = item.split()
+        ind = prom[0]
+        cont = prom[1:-1]
+        group_context = [float(item) for _, item in list(map(lambda x: x.split(":"), cont))]
+        group_context.insert(0, 1.0)
+        groups[ind] = np.array([group_context])
 
     # список актуальный рук
     arms = [item.split()[0] for item in line[2:]]
 
-    return arm, arms, reward, user_context, group_context
+    return arm, arms, reward, user_context, groups
 
 
-def read_events(f):
+def read_events(f, count=200_000):
+    # чтение событий реализовано буфферным способом, чтобы не засорять оперативную память читая весь файл целиком
+    # размеры файлов могут достигать нескольких Гб
     line = f.readline()
     res = []
     if not line:
         return None
     res.append(line)
-    while len(res) < 200_000 and line:
+    while len(res) < count and line:
         line = f.readline()
         res.append(line)
+
+    # нужно, чтобы получение очередного события в evaluate занимало не O(count) времени, а O(1)
     res.reverse()
     return res
 
 
-def pca(views, groups):
-    views = shuffle(views)
-    groups = groups.fillna(0)
-
-    user_ids = list(views["userId"])
-    groups_ids = list(views["groupId"])
-    label = list(views["label"])
-    ls = []
-    for item in label:
-        ls.append(1) if item == "Liked" else ls.append(0)
-    label = ls
-
-    l_view = list(views)[6:]
-    l_groups = list(groups)[1:]
-
-    x_views = views[l_view]
-    x_groups = groups[l_groups]
-
-    pc = sd.PCA(n_components=12)
-
-    n_views = pc.fit_transform(x_views)
-    n_groups = pc.transform(x_groups)
-
-    res_views = [np.array([list(item)]).transpose() for item in n_views]
-    res_groups = [np.array([list(item)]) for item in n_groups]
-
-    d_groups = {}
-    for i in range(len(list(groups["groupId"]))):
-        d_groups[groups["groupId"][i]] = res_groups[i]
-
-    return label, groups_ids, res_views, d_groups
-
-
-def evaluate_csv(bandit, kind):
+def evaluate(bandit, kind=None, learning=False, n_learning_files=1):
     assert isinstance(bandit, BaseBandit), "Wrong first argument"
-
-    # общая награда за весь прогон по всем файлам
-    ga = 0
-    t = 0
-
-    views = pd.read_csv("dataOKcsv/top100groups_views.csv")
-    groups = pd.read_csv("dataOKcsv/groups_formated.csv")
-
-    res, arm, event, arms = pca(views, groups)
-    set_arms = set(arm)
-    print(len(res), len(set_arms), len(event), len(arms), len(arm))
-
-    # счетчик шагов
-    step = 0
-
-    start_time = datetime.datetime.now()
-    f_errors = open(f"ok_test/errors_{kind}_in_day_.txt", "a")
-    f_history = open(f"ok_test/history_{kind}_in_day_.txt", "a")
-    f_shows = open(f"ok_test/bandit_{kind}_shows_in_day_.txt", "a")
-    error_buff = []
-    history_buff = []
-    shows_buff = []
-
-    for i in range(len(res)):
-
-        # f - лог-файлы; f_errors - файл для записи событий, когда произошли ошибки; f_history - файл событий, когда
-        # произошло совпадение выдачи политики и бандитов; f_shows - файл для записи истории показов бандитов
-
-        step += 1
-        if step % 1000 == 0:
-            print(step)
-            print(f"Время с начала запуска: {datetime.datetime.now() - start_time}", datetime.datetime.now())
-        max_hand = bandit.predict_arm((arm[i], set_arms, res[i], event[i], arms[arm[i]]))
-        shows_buff.append(str(max_hand) + "\n")
-        if len(shows_buff) > 200_000:
-            f_shows.writelines(shows_buff)
-            shows_buff.clear()
-
-        bandit.n_shows_r[arm[i]] += 1
-        bandit.n_clicks_r[arm[i]] += res[i]
-
-        # если угадали, то обновляем информацию по руке
-        if max_hand == arm[i]:
-            bandit.update((arm[i], set_arms, res[i], event[i], arms[arm[i]]))
-            history_buff.append(str(arm[i]))
-            if len(history_buff) > 200_000:
-                f_history.writelines(history_buff)
-                history_buff.clear()
-            t += 1
-            ga += res[i]
-
-        # except ValueError as e:
-        #     print(e)
-        #     error_buff.append(str(arm[i]))
-        #     if len(error_buff) > 200_000:
-        #         f_errors.writelines(error_buff)
-        #         error_buff.clear()
-
-    print(len(shows_buff), len(history_buff), len(error_buff))
-
-    f_shows.writelines(shows_buff)
-    f_errors.writelines(error_buff)
-    f_history.writelines(history_buff)
-
-    f_shows.close()
-    f_history.close()
-    f_errors.close()
-    bandit.get_results_csv(f"ok_test/{kind}_day_.csv")
-    f = open(f"ok_test/rewards_{kind}_day_.txt", "a")
-    f.write(f"total reward " + str(ga / t) + " " + str(ga) + " " + str(t))
-
-    f.close()
-
-    print(f"Полное время: {datetime.datetime.now() - start_time}")
-
-
-def evaluate(bandit, kind=None, learning=False):
-    assert isinstance(bandit, BaseBandit), "Wrong first argument"
-
-    # общая награда за весь прогон по всем файлам
-    ga = 0
-    t = 0
 
     # награда на обучении
     g_learning = 0
@@ -183,30 +77,21 @@ def evaluate(bandit, kind=None, learning=False):
     path = "/home/ruslan/PycharmProjects/group_recommender/group_recommender/bandittts_zip/bandittts"
     ls = os.listdir(path)
     ls.sort()
+    ls = ls[-3: -1]
 
     # счетчик шагов
     step = 0
 
+    # время запуска
     start_time = datetime.datetime.now()
 
+    path_for_results = "..."
+
     for i in range(len(ls)):
-
-        # f - лог-файлы; f_errors - файл для записи событий, когда произошли ошибки; f_history - файл событий, когда
-        # произошло совпадение выдачи политики и бандитов; f_shows - файл для записи истории показов бандитов
         f = open(path + "/" + ls[i], "r")
-        f_errors = open(f"/home/ruslan/PycharmProjects/group_recommender/group_recommender/data_for_pm"
-                        f"/hybrid/invalid_events/errors_{kind}_in_day_{i + 1}.txt", "a")
-        f_history = open(f"/home/ruslan/PycharmProjects/group_recommender/"
-                         f"group_recommender/data_for_pm//hybrid/history/history_{kind}_in_day_{i + 1}.txt", "a")
-        f_shows = open(f"/home/ruslan/PycharmProjects/group_recommender/"
-                       f"group_recommender/data_for_pm/hybrid/history_bandit/bandit_{kind}_shows_in_day_{i + 1}.txt",
-                       "a")
-
         buffer = read_events(f)
-        error_buff = []
-        history_buff = []
-        shows_buff = []
         while True:
+            # работа метода длится до тех пор, пока есть непросмотренные события
             if buffer is None:
                 break
 
@@ -220,27 +105,19 @@ def evaluate(bandit, kind=None, learning=False):
                     break
                 try:
                     event = format_event(line)
-                    arm, arms, reward, user_context, group_context = event
+                    arm, arms, reward, user_context, groups = event
                     max_hand = bandit.predict_arm(event)
-                    shows_buff.append(str(max_hand) + "\n")
-                    if len(shows_buff) > 200_000:
-                        f_shows.writelines(shows_buff)
-                        shows_buff.clear()
-
                     bandit.n_shows_r[arm] += 1
                     bandit.n_clicks_r[arm] += reward
 
                     # если угадали, то обновляем информацию по руке
                     if max_hand == arm:
-                        bandit.update(event)
-                        history_buff.append(str(arm) + "\n")
-                        if len(history_buff) > 200_000:
-                            f_history.writelines(history_buff)
-                            history_buff.clear()
-                        t += 1
-                        ga += reward
+                        bandit.update((arm, reward, user_context))
 
-                        if learning and i == 0:
+                        # некоторые алгоритмы не подразумевают обучения (для них learning = False)
+                        # подразумевается, что обучение происходит на первом файле с событиями (т.е. события за 1 день)
+                        # а остальные файлы - для тестирования
+                        if learning and i < n_learning_files:
                             t_learning += 1
                             g_learning += reward
                         else:
@@ -248,27 +125,14 @@ def evaluate(bandit, kind=None, learning=False):
                             g_test += reward
 
                 except ValueError:
-                    error_buff.append(line)
-                    if len(error_buff) > 200_000:
-                        f_errors.writelines(error_buff)
-                        error_buff.clear()
-
+                    print(line)
             buffer = read_events(f)
 
-        f_shows.writelines(shows_buff)
-        f_errors.writelines(error_buff)
-        f_history.writelines(history_buff)
-
-        f_shows.close()
-        f_history.close()
-        f_errors.close()
         f.close()
 
-        bandit.get_results_csv(f"/home/ruslan/PycharmProjects/group_recommender/"
-                               f"group_recommender/data_for_pm//hybrid/results/{kind}_day_{i + 1}.csv")
-        f = open(f"/home/ruslan/PycharmProjects/group_recommender/"
-                 f"group_recommender/data_for_pm/hybrid/all_kinds_of_rewards/rewards_{kind}_day_{i + 1}.txt", "a")
-        if learning and i == 0:
+        bandit.get_results_csv(path_for_results + f"/{kind}_day_{i + 1}.csv")
+        f = open(path_for_results + f"/rewards_{kind}_day_{i + 1}.txt", "a")
+        if learning and i < n_learning_files:
             f.write(f"total reward " + str(g_learning / t_learning) + " " + str(g_learning) + " " + str(t_learning))
 
             # сброс счетчиков кликов и показов после обучения
@@ -278,19 +142,15 @@ def evaluate(bandit, kind=None, learning=False):
 
         f.close()
     print(f"Полное время: {datetime.datetime.now() - start_time}")
+    return bandit
 
 
 if __name__ == "__main__":
-    start = time.ctime(time.time())
-    # evaluate(UCB1(0.1), "UCB1")
-    # evaluate(HybridBandit(2.1, 6, 6, 0.8, -15), "Hybrid", True)
-    # evaluate(EGreedy(0.1), "E-Greedy-const")
-    # evaluate(DisjointBandit(2.1, 6, 0.8, -15), "D-Bandit", True)
-    # l = np.linspace(1.8, 2, 2)
-    # for item in l:
-    #     evaluate_csv(HybridBandit(item, 12, 12, 0.8, -15), f"Hybrid_{item}")
+    print(f"Started at {time.ctime(time.time())}")
+    bandit = HybridBandit(1.2, 6, 6, 0.0358)
+    evaluate(bandit)
+    path_bandit = ".../bandit.pickle"
+    with open(path_bandit, 'wb') as f:
+        pickle.dump(bandit, f)
 
-    evaluate(HybridBandit(1.6, 6, 6, 0.8, -15), f"Hybrid_{0.8}", True)
-    end = time.ctime(time.time())
-    print(f"start time: {start}")
-    print(f"end time: {end}")
+

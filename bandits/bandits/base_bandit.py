@@ -1,30 +1,35 @@
-import numpy as np
+"""Parent class for all bandit algorithms"""
 import pandas as pd
+import pickle
 
 
 class BaseBandit:
 
     def __init__(self):
+        # множество рук
         self.arms = set()
+
+        # словари счетчиков для подсчетов CTR
         self.n_shows_b = {}
         self.n_shows_r = {}
 
         self.n_clicks_b = {}
         self.n_clicks_r = {}
 
-        # специальное множество для id-шников плохих групп
-        # self.black_list = set()
-
     def predict_arm(self, event):
+        """Method for predicting arm for the step"""
         pass
 
     def update(self, event):
+        """Updating internal parameters of algorithm"""
         pass
 
     def init_arm(self, arm):
+        """Initiating parameters of algorithm for a new arm"""
         pass
 
     def reboot(self):
+        """Updating counters after learning period"""
         for key in self.arms:
             self.n_shows_b[key] = 0
             self.n_shows_r[key] = 0
@@ -97,3 +102,10 @@ class BaseBandit:
 
         data = pd.DataFrame(data=data)
         data.to_csv(file_name, index=False)
+
+    def dump(self, file_name):
+        """Saving a bandit like byte file"""
+        # file_name должно иметь расширение .pickle
+
+        with open(file_name, "wb") as f:
+            pickle.dump(self, f)
