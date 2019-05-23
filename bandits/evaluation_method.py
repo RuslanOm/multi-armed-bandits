@@ -76,8 +76,6 @@ def evaluate(bandit, kind=None, learning=False, n_learning_files=1):
 
     path = "/home/ruslan/PycharmProjects/group_recommender/group_recommender/bandittts_zip/bandittts"
     ls = os.listdir(path)
-    ls.sort()
-    ls = ls[-3: -1]
 
     # счетчик шагов
     step = 0
