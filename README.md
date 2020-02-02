@@ -4,3 +4,4 @@
 * [Finite-time Analysis of the Multiarmed Bandit Problemе](https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf): e-greedy, UCB1.
 * [An unbiased offline evaluation of contextual bandit algorithms with generalized linear models](http://proceedings.mlr.press/v26/li12a/li12a.pdf): offline evaluation.
 * [A Case Study of Behavior-driven Conjoint Analysis on Yahoo! Front Page Today Module](http://www.gatsby.ucl.ac.uk/~chuwei/paper/isp781-chu.pdf): bilinear transformation.
+* [Датасет для тестирования](https://webscope.sandbox.yahoo.com/catalog.php?datatype=r&did=49)
