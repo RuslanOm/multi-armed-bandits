@@ -17,7 +17,7 @@ from sklearn.utils import shuffle
 
 def format_event(line):
     # форматирование событий из лог-файла
-    # данный способ форматирования приведен для вида событий, которые в работе описаны рисунком 3
+    # данный способ форматирования приведен для вида событий, которые представлены в датасете из README
     line = line.strip().split("|")
     arm = line[0].split()[1]
     reward = int(line[0].split()[2])
@@ -74,7 +74,7 @@ def evaluate(bandit, kind=None, learning=False, n_learning_files=1):
     g_test = 0
     t_test = 0
 
-    path = "/home/ruslan/PycharmProjects/group_recommender/group_recommender/bandittts_zip/bandittts"
+    path = "/path/to/data"
     ls = os.listdir(path)
 
     # счетчик шагов
